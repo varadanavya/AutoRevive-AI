@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  autorevive-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: autorevive_ai
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=file:./dev.db
+      - RAZORPAY_WEBHOOK_SECRET=razorpay_secret_key_12345
+      - DEMO_MODE=true
+    restart: unless-stopped

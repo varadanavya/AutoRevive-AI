@@ -1,0 +1,149 @@
+// AutoRevive AI Prisma Schema
+// Provider configured for SQLite by default for instant zero-dependency execution.
+// Can be changed to "mysql" for production MySQL database.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id                 String            @id @default(uuid())
+  razorpayCustomerId String            @unique
+  name               String
+  email              String
+  phone              String
+  status             String            @default("ACTIVE") // ACTIVE, FLAGGED, INACTIVE
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  transactions       Transaction[]
+  notifications      NotificationLog[]
+
+  @@map("customers")
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  razorpayPaymentId String            @unique
+  razorpayOrderId   String?
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  amount            Float
+  currency          String            @default("INR")
+  status            String            // PENDING, CAPTURED, FAILED, RECOVERED, REFUNDED
+  paymentMethod     String            // CARD, UPI, NETBANKING, WALLET, EMI
+  failureReason     String?
+  failureCode       String?
+  failureCategory   String?           // INSUFFICIENT_FUNDS, BANK_TIMEOUT, GATEWAY_TIMEOUT, EXPIRED_CARD, NETWORK_ERROR, SUSPECTED_FRAUD
+  recoveryStatus    String            @default("NOT_STARTED") // NOT_STARTED, IN_RECOVERY, RECOVERED, FAILED_RECOVERY, EXPIRED, STOPPED
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  failureLogs       FailureLog[]
+  workflows         RecoveryWorkflow[]
+  retryAttempts     RetryAttempt[]
+  notifications     NotificationLog[]
+  revenueRecoveries RevenueRecovery[]
+
+  @@map("transactions")
+}
+
+model FailureLog {
+  id                  String      @id @default(uuid())
+  transactionId       String
+  transaction         Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  rawError            String      // Raw JSON or payload snippet
+  errorCode           String
+  errorMessage        String
+  aiDiagnosis         String      // LLM/Heuristic explanation
+  recoveryProbability Float       // 0 - 100 percentage
+  riskScore           Float       // 0 - 100 risk rating
+  category            String      // Failure taxonomy category
+  createdAt           DateTime    @default(now())
+
+  @@map("failure_logs")
+}
+
+model RecoveryWorkflow {
+  id               String         @id @default(uuid())
+  transactionId    String
+  transaction      Transaction    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  status           String         @default("PENDING") // PENDING, ACTIVE, COMPLETED, FAILED, CANCELLED
+  decision         String         // RETRY_NOW, RETRY_LATER, CUSTOMER_ACTION, STOP_RETRY, MANUAL_REVIEW
+  totalRetries     Int            @default(0)
+  maxRetries       Int            @default(3)
+  nextRetryAt      DateTime?
+  confidenceScore  Float          // 0 - 100
+  recoveryStrategy String         // Description of the backoff/decay strategy
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  retryAttempts    RetryAttempt[]
+
+  @@map("recovery_workflows")
+}
+
+model RetryAttempt {
+  id              String           @id @default(uuid())
+  transactionId   String
+  transaction     Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  workflowId      String
+  workflow        RecoveryWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  attemptNumber   Int
+  scheduledAt     DateTime
+  executedAt      DateTime?
+  status          String           @default("SCHEDULED") // SCHEDULED, EXECUTED, SUCCESS, FAILED, CANCELLED
+  responseCode    String?
+  responseMessage String?
+  outcome         String?          // SUCCESS, DECLINED, TIMEOUT
+  createdAt       DateTime         @default(now())
+
+  @@map("retry_attempts")
+}
+
+model NotificationLog {
+  id            String      @id @default(uuid())
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  channel       String      // EMAIL, SMS, WHATSAPP, IN_APP
+  type          String      // FAILURE_ALERT, RECOVERY_ACTION_LINK, SUCCESS_RECEIPT
+  status        String      @default("SENT") // DELIVERED, SENT, FAILED
+  recipient     String
+  messageBody   String
+  sentAt        DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+
+  @@map("notification_logs")
+}
+
+model RevenueRecovery {
+  id             String      @id @default(uuid())
+  transactionId  String
+  transaction    Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  originalAmount Float
+  recoveredAmount Float
+  recoveredAt    DateTime    @default(now())
+  recoveryMethod String      // SMART_RETRY, CUSTOMER_ACTION_LINK, MANUAL_OVERRIDE
+  costSaved      Float       @default(0.0) // Estimated revenue saved minus processing fee
+  createdAt      DateTime    @default(now())
+
+  @@map("revenue_recoveries")
+}
+
+model WebhookEvent {
+  id          String    @id @default(uuid())
+  eventId     String    @unique // Razorpay event ID e.g. event_12345
+  eventType   String    // payment.failed, payment.captured, subscription.charged
+  payload     String    // Raw JSON string
+  status      String    @default("PROCESSED") // RECEIVED, PROCESSED, FAILED
+  processedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@map("webhook_events")
+}
