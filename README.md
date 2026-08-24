@@ -5,6 +5,16 @@
 AutoRevive AI transforms payment drop-offs into recovered revenue. Designed to integrate seamlessly with the **Razorpay ecosystem**, AutoRevive AI intercepts `payment.failed` webhooks, classifies root causes using a hybrid AI decision engine, schedules optimal retries using exponential backoff with jitter and banking window alignment, and triggers multi-channel customer recovery campaigns.
 
 ---
+## 🚀 Live Demo
+
+🔗 **Live Demo:**(https://autorevive-ai-1.onrender.com/)
+
+🔗 **GitHub Repository:** https://github.com/varadanavya/AutoRevive-AI
+
+> Experience the AutoRevive AI dashboard, payment failure diagnosis,
+> intelligent recovery workflows, retry scheduling, and revenue analytics.
+
+
 
 ## 🌟 Key Features
 
