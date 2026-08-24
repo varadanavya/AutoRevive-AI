@@ -4,14 +4,13 @@
   "description": "AI-Powered Payment Failure Diagnosis and Revenue Recovery Platform for Razorpay AI Buildathon",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && node -e \"require('fs').cpSync('src/public', 'dist/public', {recursive: true})\"",
+    "build": "node node_modules/prisma/build/index.js generate && tsc && node -e \"require('fs').cpSync('src/public', 'dist/public', {recursive: true})\"",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "postinstall": "npx --no-install prisma generate",
-    "prisma:generate": "npx --no-install prisma generate",
-    "prisma:push": "npx --no-install prisma db push",
+    "prisma:generate": "node node_modules/prisma/build/index.js generate",
+    "prisma:push": "node node_modules/prisma/build/index.js db push",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "db:setup": "npx --no-install prisma db push && ts-node prisma/seed.ts",
+    "db:setup": "node node_modules/prisma/build/index.js db push && ts-node prisma/seed.ts",
     "test": "ts-node tests/index.test.ts"
   },
   "prisma": {
